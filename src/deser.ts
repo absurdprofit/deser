@@ -1,6 +1,7 @@
-import { BitStream, BitView } from "bit-buffer";
+import { BitStream } from "bit-buffer";
 import { BUFFER_METADATA_KEY, ENDIANNESS_METADATA_KEY } from "./common/constants";
 import { BufferMetadata } from "./common/types";
+import { coerceToArrayBuffer } from "./common/utils";
 
 export abstract class DeSer {
 	public static fromBuffer<T extends DeSer>(this: new () => T, buffer: ArrayBuffer): T {
@@ -11,6 +12,7 @@ export abstract class DeSer {
 		const propertyMetadata: BufferMetadata = Reflect.getMetadata(BUFFER_METADATA_KEY, instance) ?? {};
 		Object.keys(propertyMetadata).forEach((propertyKey) => {
 			const value = Reflect.get(this, propertyKey);
+			const type = Reflect.getMetadata("design:type", this, propertyKey);
 			if (typeof value === 'number') {
 				stream.readFloat64();
 			} else if (typeof value === 'boolean') {
@@ -35,12 +37,32 @@ export abstract class DeSer {
 		const propertyMetadata: BufferMetadata = Reflect.getMetadata(BUFFER_METADATA_KEY, this) ?? {};
 		Object.keys(propertyMetadata).forEach((propertyKey) => {
 			const value = Reflect.get(this, propertyKey);
-			if (typeof value === 'number') {
-				stream.writeFloat64(value);
-			} else if (typeof value === 'boolean') {
-				stream.writeBoolean(value);
-			} else if (typeof value === 'string') {
-				stream.writeUTF8String(value);
+			switch (typeof value) {
+				case "number":
+					stream.writeFloat64(value);
+					break;
+				case "boolean":
+					stream.writeBoolean(value);
+					break;
+				case "string":
+					stream.writeUTF8String(value);
+					break;
+				case "symbol":
+					stream.writeUTF8String(value.description ?? '');
+					break;
+				case "object":
+					if (value instanceof ArrayBuffer || value instanceof DeSer) {
+						const buffer = coerceToArrayBuffer(value);
+						stream.writeFloat64(buffer.byteLength);
+						stream.writeArrayBuffer(new BitStream(buffer));
+					} else
+						stream.writeUTF8String(JSON.stringify(value));
+
+					break;
+				case "undefined":
+					break;
+				default:
+					throw new Error(`Unsupported type: ${typeof value} for property ${propertyKey}`);
 			}
 		});
 		return buffer;
