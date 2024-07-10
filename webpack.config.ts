@@ -3,8 +3,9 @@ import webpack from 'webpack';
 
 const config: webpack.Configuration = {
   entry: './src/index.ts', // Your TypeScript entry file
+  mode: "development",
   output: {
-    filename: 'index.js',
+    filename: '[name].mjs',
     path: path.resolve(__dirname, 'build'),
     libraryTarget: 'module', // Use ES modules
 		clean: true

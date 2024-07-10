@@ -1,19 +1,32 @@
+import "reflect-metadata";
 import { buffer, endianness, json } from "./decorators";
 import { DeSer } from "./deser";
-import "reflect-metadata";
+
+
+export * from './decorators';
+export * from './deser';
 
 @endianness('big')
 class Serialisable extends DeSer {
 	@json()
 	@buffer()
-	public flag: boolean = false;
+	public flag: boolean = true;
 	@json()
 	@buffer()
-	public id: number = 0;
+	public id: number = 50;
 	@json()
 	@buffer()
-	public name: string = '';
+	public name: string = 'Nathan';
 }
 
 const serialisable = new Serialisable();
-console.log(serialisable.toBuffer());
+eval('import("fs")').then((fs: any) => {
+	fs.writeFileSync('serialisable.bin', Buffer.from(serialisable.toBuffer()));
+	const buffer = fs.readFileSync('serialisable.bin');
+	const deserialised = Serialisable.fromBuffer(buffer.buffer);
+	console.log(deserialised["name"]);
+	console.log(deserialised["id"]);
+	console.log(deserialised["flag"]);
+
+})
+	
