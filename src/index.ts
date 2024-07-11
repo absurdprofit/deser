@@ -6,7 +6,12 @@ import { DeSer } from "./deser";
 export * from './decorators';
 export * from './deser';
 
-@endianness('big')
+enum TestEnum {
+	ONE = 1,
+	TWO = 2,
+	THREE = 3
+}
+
 class Serialisable2 extends DeSer {
 	@json()
 	@buffer()
@@ -30,10 +35,19 @@ class Serialisable extends DeSer {
 	@json()
 	@buffer()
 	public nested: Serialisable2 = new Serialisable2();
+	@json()
+	@buffer()
+	public enumField: TestEnum = TestEnum.ONE;
+	@json()
+	@buffer()
+	public unionField: 'a' | 'b' = 'a';
+	@json()
+	@buffer()
+	public exclusiveUnionField: number | string = 5;
+	@json()
+	@buffer()
+	public buffer: ArrayBuffer = new ArrayBuffer(10);
 }
 
 const serialisable = new Serialisable();
-eval('import("fs")').then((fs: any) => {
-	fs.writeFileSync('serialisable.bin', Buffer.from(serialisable.toBuffer()));
-})
-	
+serialisable.toBuffer();

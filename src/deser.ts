@@ -36,33 +36,30 @@ export abstract class DeSer {
 		stream.bigEndian = endianness === 'big';
 		const propertyMetadata: BufferMetadata = Reflect.getMetadata(BUFFER_METADATA_KEY, this) ?? {};
 		Object.keys(propertyMetadata).forEach((propertyKey) => {
-			const value = Reflect.get(this, propertyKey);
-			switch (typeof value) {
-				case "number":
+			const value = Reflect.get(this, propertyKey) as any;
+			const type = Reflect.getMetadata("design:type", this, propertyKey);
+			switch (type) {
+				case Number:
 					stream.writeFloat64(value);
 					break;
-				case "boolean":
+				case Boolean:
 					stream.writeBoolean(value);
 					break;
-				case "string":
+				case String:
 					stream.writeUTF8String(value);
 					break;
-				case "symbol":
+				case Symbol:
 					stream.writeUTF8String(value.description ?? '');
 					break;
-				case "object":
+				default:
 					if (value instanceof ArrayBuffer || value instanceof DeSer) {
 						const buffer = coerceToArrayBuffer(value);
 						stream.writeFloat64(buffer.byteLength);
-						stream.writeArrayBuffer(new BitStream(buffer));
-					} else
+						stream.writeArrayBuffer(buffer as any);
+					} else if (typeof value !== 'undefined' && typeof value !== 'function')
 						stream.writeUTF8String(JSON.stringify(value));
-
-					break;
-				case "undefined":
-					break;
-				default:
-					throw new Error(`Unsupported type: ${typeof value} for property ${propertyKey}`);
+					else
+						throw new TypeError(`Unsupported type '${typeof value}' for property '${propertyKey}'`);
 			}
 		});
 		return buffer;
