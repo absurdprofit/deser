@@ -10,7 +10,7 @@ export function defineGetters<T extends DeSer>(target: T, propertyKey: keyof T) 
 		set(_value) {
 			value = _value;
 		},
-		enumerable: false,
+		enumerable: true,
 		configurable: false
 	});
 }

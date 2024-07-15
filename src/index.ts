@@ -18,6 +18,10 @@ class Serialisable2 extends DeSer {
 	public flag: boolean = false;
 }
 
+const uint8array = new Uint8Array(new ArrayBuffer(10));
+for (let i = 0; i < uint8array.byteLength; i++) {
+	uint8array[i] = i;
+}
 @endianness('big')
 class Serialisable extends DeSer {
 	@json()
@@ -46,8 +50,19 @@ class Serialisable extends DeSer {
 	public exclusiveUnionField: number | string = 5;
 	@json()
 	@buffer()
-	public buffer: ArrayBuffer = new ArrayBuffer(10);
+	public buffer: ArrayBuffer = uint8array.buffer;
 }
 
-const serialisable = new Serialisable();
-serialisable.toBuffer();
+
+class SerialisableJSON extends DeSer {
+	public flag: boolean = true;
+	public id: number = 50;
+	public name: string = 'Nathan';
+	public symbol: symbol = Symbol('test');
+	public nested: Serialisable2 = new Serialisable2();
+	public enumField: TestEnum = TestEnum.ONE;
+	public unionField: 'a' | 'b' = 'a';
+	public exclusiveUnionField: number | string = 5;
+	public buffer: ArrayBuffer = uint8array.buffer;
+}
+export { Serialisable, SerialisableJSON };

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script type="module">
+        const { Serialisable, SerialisableJSON } = await import('../build/main.mjs');
+        const serialisable = new Serialisable();
+        const iterations = 10000;
+        {
+            let min = 0;
+            let max = 0;
+            let sum = 0;
+            console.group('buffer');
+            for (let i = 0; i < iterations; i++) {
+                const start = performance.now();
+                serialisable.toBuffer();
+                const end = performance.now();
+                const delta = end - start;
+                if (min === 0)
+                    min = delta;
+                else
+                    min = Math.min(min, delta);
+                max = Math.max(max, delta);
+                sum += delta;
+            }
+            console.log('Min:', min, 'ms');
+            console.log('Mean:', sum / iterations, 'ms');
+            console.log('Max:', max, 'ms');
+            console.groupEnd();
+
+        }
+        const serialisableJSON = new SerialisableJSON();
+        {
+            let min = 0;
+            let max = 0;
+            let sum = 0;
+            console.group('json');
+            for (let i = 0; i < iterations; i++) {
+                const start = performance.now();
+                JSON.stringify(serialisableJSON);
+                const end = performance.now();
+                const delta = end - start;
+                min = Math.min(min, delta);
+                max = Math.max(max, delta);
+                sum += delta;
+            }
+            console.log('Min:', min, 'ms');
+            console.log('Mean:', sum / iterations, 'ms');
+            console.log('Max:', max, 'ms');
+            console.groupEnd();
+        }
+
+    </script>
+</body>
+
+</html>

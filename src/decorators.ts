@@ -23,16 +23,22 @@ export function buffer() {
 		defineGetters(target, propertyKey);
 
 		bufferMetadata[propertyKey] = {
-			get size() {
+			get bitSize() {
 				const value = Reflect.get(target, propertyKey);
 				if (typeof value === "number") {
-					return 8;
+					return 8 * 8;
 				} else if (typeof value === "boolean") {
 					return 1;
 				} else if (typeof value === "string") {
 					return value.length * 8;
+				} else if (typeof value === "symbol") {
+					return (value.description ?? '').length * 8;
+				} else if (value instanceof DeSer) {
+					return value.sizeOf() * 8 + (4 * 8);
+				} else if (value instanceof ArrayBuffer) {
+					return value.byteLength * 8 + (4 * 8);
 				}
-				return 0;
+				return JSON.stringify(value).length * 8;
 			}
 		};
 		Reflect.defineMetadata(BUFFER_METADATA_KEY, bufferMetadata, target);

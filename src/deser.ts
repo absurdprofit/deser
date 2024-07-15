@@ -5,20 +5,35 @@ import { coerceToArrayBuffer } from "./common/utils";
 
 export abstract class DeSer {
 	public static fromBuffer<T extends DeSer>(this: new () => T, buffer: ArrayBuffer): T {
-		const instance = new this();
+		const instance: any = new this();
 		const stream = new BitStream(buffer);
 		const { endianness } = instance;
 		stream.bigEndian = endianness === 'big';
 		const propertyMetadata: BufferMetadata = Reflect.getMetadata(BUFFER_METADATA_KEY, instance) ?? {};
 		Object.keys(propertyMetadata).forEach((propertyKey) => {
-			const value = Reflect.get(this, propertyKey);
-			const type = Reflect.getMetadata("design:type", this, propertyKey);
-			if (typeof value === 'number') {
-				stream.readFloat64();
-			} else if (typeof value === 'boolean') {
-				stream.readBoolean();
-			} else if (typeof value === 'string') {
-				stream.readUTF8String();
+			const type = Reflect.getMetadata("design:type", instance, propertyKey);
+			switch (type) {
+				case Number:
+					instance[propertyKey] = stream.readFloat64();
+					break;
+				case Boolean:
+					instance[propertyKey] = stream.readBoolean();
+					break;
+				case String:
+					instance[propertyKey] = stream.readUTF8String();
+					break;
+				case Symbol:
+					instance[propertyKey] = Symbol(stream.readUTF8String());
+					break;
+				case Object:
+					instance[propertyKey] = JSON.parse(stream.readUTF8String());
+					break;
+				default:
+					if (type.prototype instanceof DeSer) {
+						instance[propertyKey] = type.fromBuffer(stream.readArrayBuffer(stream.readUint32()).buffer);
+					} else if (type === ArrayBuffer)
+						instance[propertyKey] = stream.readArrayBuffer(stream.readUint32()).buffer;
+
 			}
 		});
 
@@ -51,29 +66,32 @@ export abstract class DeSer {
 				case Symbol:
 					stream.writeUTF8String(value.description ?? '');
 					break;
+				case Object:
+					stream.writeUTF8String(JSON.stringify(value));
+					break;
 				default:
 					if (value instanceof ArrayBuffer || value instanceof DeSer) {
 						const buffer = coerceToArrayBuffer(value);
-						stream.writeFloat64(buffer.byteLength);
+						stream.writeUint32(buffer.byteLength);
 						stream.writeArrayBuffer(buffer as any);
-					} else if (typeof value !== 'undefined' && typeof value !== 'function')
-						stream.writeUTF8String(JSON.stringify(value));
-					else
+					} else
 						throw new TypeError(`Unsupported type '${typeof value}' for property '${propertyKey}'`);
 			}
 		});
 		return buffer;
 	}
 
-	public toJSON(): string {
-		throw new Error('Not implemented');
-	}
+	// public toJSON(): string {
+	// 	throw new Error('Not implemented');
+	// }
 
 	public sizeOf(): number {
 		const propertyMetadata: BufferMetadata = Reflect.getMetadata(BUFFER_METADATA_KEY, this) ?? {};
-		return Object.values(propertyMetadata).reduce((size, metadata) => {
-			return size + metadata.size;
+		const sizeInBits = Object.values(propertyMetadata).reduce((bitSize, metadata) => {
+			return bitSize + metadata.bitSize;
 		}, 0);
+
+		return Math.ceil(sizeInBits / 8);
 	}
 
 	public get endianness(): 'big' | 'little' {

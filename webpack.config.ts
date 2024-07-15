@@ -8,11 +8,12 @@ const config: webpack.Configuration = {
     filename: '[name].mjs',
     path: path.resolve(__dirname, 'build'),
     libraryTarget: 'module', // Use ES modules
-		clean: true
+    clean: true
   },
   experiments: {
     outputModule: true // Enable output as ES module
   },
+  devtool: 'source-map',
   resolve: {
     extensions: ['.ts', '.js'],
   },
