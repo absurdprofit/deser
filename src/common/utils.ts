@@ -1,4 +1,5 @@
 import { DeSer } from "../deser";
+import { METADATA_REGISTRY } from "./constants";
 
 export function defineGetters<T extends DeSer>(target: T, propertyKey: keyof T) {
 	let value: any;
@@ -21,4 +22,14 @@ export function coerceToArrayBuffer(value: ArrayBuffer | DeSer) {
 	} else {
 		return value.toBuffer();
 	}
+}
+
+export function defineMetadata(key: string | number | symbol, value: any, target: object) {
+	const existingMetadata = METADATA_REGISTRY.get(target) ?? {};
+	existingMetadata[key] = value;
+	METADATA_REGISTRY.set(target, existingMetadata);
+}
+
+export function getMetadata(key: string | number | symbol, target: object) {
+	return METADATA_REGISTRY.get(target)?.[key];
 }
