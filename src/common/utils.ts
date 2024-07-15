@@ -1,5 +1,4 @@
 import { DeSer } from "../deser";
-import { METADATA_REGISTRY } from "./constants";
 
 export function defineGetters<T extends DeSer>(target: T, propertyKey: keyof T) {
 	let value: any;
@@ -24,6 +23,7 @@ export function coerceToArrayBuffer(value: ArrayBuffer | DeSer) {
 	}
 }
 
+const METADATA_REGISTRY = new WeakMap();
 export function defineMetadata(key: string | number | symbol, value: any, target: object) {
 	const existingMetadata = METADATA_REGISTRY.get(target) ?? {};
 	existingMetadata[key] = value;

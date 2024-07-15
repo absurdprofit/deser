@@ -29,9 +29,12 @@
                 max = Math.max(max, delta);
                 sum += delta;
             }
-            console.log('Min:', min, 'ms');
-            console.log('Mean:', sum / iterations, 'ms');
-            console.log('Max:', max, 'ms');
+            console.table({
+                total: sum,
+                min,
+                mean: sum / iterations,
+                max,
+            });
             console.groupEnd();
 
         }
@@ -50,9 +53,12 @@
                 max = Math.max(max, delta);
                 sum += delta;
             }
-            console.log('Min:', min, 'ms');
-            console.log('Mean:', sum / iterations, 'ms');
-            console.log('Max:', max, 'ms');
+            console.table({
+                total: sum,
+                min,
+                mean: sum / iterations,
+                max,
+            });
             console.groupEnd();
         }
 

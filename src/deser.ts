@@ -8,7 +8,7 @@ export abstract class DeSer {
 		const instance: Record<string, any> = new this();
 		const stream = new BitStream(buffer);
 		stream.bigEndian = instance.endianness === 'big';
-		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, instance) ?? {};
+		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, Object.getPrototypeOf(instance)) ?? {};
 		for (const propertyKey in propertyMetadata) {
 			const metadata = propertyMetadata[propertyKey];
 			const type = metadata.type;
@@ -28,16 +28,16 @@ export abstract class DeSer {
 				case Symbol: {
 					let value;
 					if (encoding === "ascii")
-						value = stream.readASCIIString();
+						value = stream.readASCIIString(stream.readUint32());
 					else
-						value = stream.readUTF8String();
+						value = stream.readUTF8String(stream.readUint32());
 					if (type === Symbol)
 						value = Symbol(value);
 					instance[propertyKey] = value;
 					break;
 				}
 				case Object:
-					instance[propertyKey] = JSON.parse(stream.readUTF8String());
+					instance[propertyKey] = JSON.parse(stream.readUTF8String(stream.readUint32()));
 					break;
 				default:
 					if ('prototype' in type && type.prototype instanceof DeSer) {
@@ -59,7 +59,7 @@ export abstract class DeSer {
 		const buffer = new ArrayBuffer(this.sizeOf());
 		const stream = new BitStream(buffer);
 		stream.bigEndian = this.endianness === 'big';
-		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, this) ?? {};
+		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, Object.getPrototypeOf(this)) ?? {};
 		for (const propertyKey in propertyMetadata) {
 			const metadata = propertyMetadata[propertyKey];
 			const value = (this as Record<string, any>)[propertyKey];
@@ -77,20 +77,25 @@ export abstract class DeSer {
 					stream.writeBoolean(value);
 					break;
 				case String:
+					stream.writeUint32(value.length);
 					if (encoding === 'ascii')
 						stream.writeASCIIString(value);
 					else
 						stream.writeUTF8String(value);
 					break;
 				case Symbol:
+					stream.writeUint32(value.description.length);
 					if (encoding === 'ascii')
 						stream.writeASCIIString(value.description ?? '');
 					else
 						stream.writeUTF8String(value.description ?? '');
 					break;
-				case Object:
-					stream.writeUTF8String(JSON.stringify(value));
+				case Object: {
+					const json = JSON.stringify(value);
+					stream.writeUint32(json.length);
+					stream.writeUTF8String(json);
 					break;
+				}
 				default:
 					if (value instanceof ArrayBuffer || value instanceof DeSer) {
 						const buffer = coerceToArrayBuffer(value);
@@ -108,7 +113,7 @@ export abstract class DeSer {
 	// }
 
 	public sizeOf(): number {
-		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, this) ?? {};
+		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, Object.getPrototypeOf(this)) ?? {};
 		const sizeInBits = Object.values(propertyMetadata).reduce((bitSize, metadata) => {
 			return bitSize + metadata.bitSize;
 		}, 0);

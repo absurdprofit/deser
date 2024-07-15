@@ -29,6 +29,7 @@ export function buffer(options: BufferOptions = {}) {
 			if (type !== Symbol)
 				type = String;
 		}
+		const lengthBitLength = 4 * 8;
 		bufferMetadata[propertyKey] = {
 			type,
 			options,
@@ -36,26 +37,23 @@ export function buffer(options: BufferOptions = {}) {
 				if ('bits' in options && options.bits)
 					return options.bits;
 				let value: any = target[propertyKey];
-				if ('encoding' in options) {
-					if (typeof value === "symbol")
-						value = value.description;
-					else
-						value = String(value);
+				if ('encoding' in options && typeof value !== "symbol") {
+					value = String(value);
 				}
 				if (typeof value === "number") {
 					return 8 * 8;
 				} else if (typeof value === "boolean") {
 					return 1;
 				} else if (typeof value === "string") {
-					return value.length * 8;
+					return value.length * 8 + lengthBitLength;
 				} else if (typeof value === "symbol") {
-					return (value.description ?? '').length * 8;
+					return (value.description ?? '').length * 8 + lengthBitLength;
 				} else if (value instanceof DeSer) {
-					return value.sizeOf() * 8 + (4 * 8);
+					return value.sizeOf() * 8 + lengthBitLength;
 				} else if (value instanceof ArrayBuffer) {
-					return value.byteLength * 8 + (4 * 8);
+					return value.byteLength * 8 + lengthBitLength;
 				}
-				return JSON.stringify(value).length * 8;
+				return JSON.stringify(value).length * 8 + lengthBitLength;
 			}
 		};
 		defineMetadata(BUFFER_METADATA_KEY, bufferMetadata, target);
