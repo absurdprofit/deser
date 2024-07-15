@@ -1,5 +1,5 @@
 import { BUFFER_METADATA_KEY, ENDIANNESS_METADATA_KEY, JSON_METADATA_KEY } from "./common/constants";
-import { BufferMetadata } from "./common/types";
+import { BufferMetadata, BufferOptions } from "./common/types";
 import { defineGetters, defineMetadata, getMetadata } from "./common/utils";
 import { DeSer } from "./deser";
 
@@ -17,14 +17,31 @@ export function json() {
 	}
 }
 
-export function buffer() {
+export function buffer(options: BufferOptions = {}) {
 	return function <T extends DeSer>(target: T, propertyKey: keyof T) {
 		const bufferMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, target) || {};
 		defineGetters(target, propertyKey);
 
+		let type = Reflect.getMetadata("design:type", target, propertyKey as string | symbol);
+		if ('bits' in options) {
+			type = Number;
+		} else if ('encoding' in options) {
+			if (type !== Symbol)
+				type = String;
+		}
 		bufferMetadata[propertyKey] = {
+			type,
+			options,
 			get bitSize() {
-				const value = target[propertyKey];
+				if ('bits' in options && options.bits)
+					return options.bits;
+				let value: any = target[propertyKey];
+				if ('encoding' in options) {
+					if (typeof value === "symbol")
+						value = value.description;
+					else
+						value = String(value);
+				}
 				if (typeof value === "number") {
 					return 8 * 8;
 				} else if (typeof value === "boolean") {

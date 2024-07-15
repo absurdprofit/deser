@@ -10,25 +10,37 @@ export abstract class DeSer {
 		stream.bigEndian = instance.endianness === 'big';
 		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, instance) ?? {};
 		for (const propertyKey in propertyMetadata) {
-			const type = Reflect.getMetadata("design:type", instance, propertyKey);
+			const metadata = propertyMetadata[propertyKey];
+			const type = metadata.type;
+			const encoding = 'encoding' in metadata.options ? metadata.options.encoding : 'utf8';
+			const bits = 'bits' in metadata.options ? metadata.options.bits : 0;
 			switch (type) {
 				case Number:
-					instance[propertyKey] = stream.readFloat64();
+					if (bits)
+						instance[propertyKey] = stream.readBits(bits);
+					else
+						instance[propertyKey] = stream.readFloat64();
 					break;
 				case Boolean:
 					instance[propertyKey] = stream.readBoolean();
 					break;
 				case String:
-					instance[propertyKey] = stream.readUTF8String();
+				case Symbol: {
+					let value;
+					if (encoding === "ascii")
+						value = stream.readASCIIString();
+					else
+						value = stream.readUTF8String();
+					if (type === Symbol)
+						value = Symbol(value);
+					instance[propertyKey] = value;
 					break;
-				case Symbol:
-					instance[propertyKey] = Symbol(stream.readUTF8String());
-					break;
+				}
 				case Object:
 					instance[propertyKey] = JSON.parse(stream.readUTF8String());
 					break;
 				default:
-					if (type.prototype instanceof DeSer) {
+					if ('prototype' in type && type.prototype instanceof DeSer) {
 						instance[propertyKey] = type.fromBuffer(stream.readArrayBuffer(stream.readUint32()).buffer);
 					} else if (type === ArrayBuffer)
 						instance[propertyKey] = stream.readArrayBuffer(stream.readUint32()).buffer;
@@ -49,20 +61,32 @@ export abstract class DeSer {
 		stream.bigEndian = this.endianness === 'big';
 		const propertyMetadata: BufferMetadata = getMetadata(BUFFER_METADATA_KEY, this) ?? {};
 		for (const propertyKey in propertyMetadata) {
+			const metadata = propertyMetadata[propertyKey];
 			const value = (this as Record<string, any>)[propertyKey];
-			const type = Reflect.getMetadata("design:type", this, propertyKey);
+			const type = metadata.type;
+			const encoding = 'encoding' in metadata.options ? metadata.options.encoding : 'utf8';
+			const bits = 'bits' in metadata.options ? metadata.options.bits : 0;
 			switch (type) {
 				case Number:
-					stream.writeFloat64(value);
+					if (bits)
+						stream.writeBits(value, bits);
+					else
+						stream.writeFloat64(value);
 					break;
 				case Boolean:
 					stream.writeBoolean(value);
 					break;
 				case String:
-					stream.writeUTF8String(value);
+					if (encoding === 'ascii')
+						stream.writeASCIIString(value);
+					else
+						stream.writeUTF8String(value);
 					break;
 				case Symbol:
-					stream.writeUTF8String(value.description ?? '');
+					if (encoding === 'ascii')
+						stream.writeASCIIString(value.description ?? '');
+					else
+						stream.writeUTF8String(value.description ?? '');
 					break;
 				case Object:
 					stream.writeUTF8String(JSON.stringify(value));
